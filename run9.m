@@ -5,7 +5,7 @@ tic
 rng(1)
 
 % finalds = [];
-OneforDMPtwoforRMP = 2
+OneforDMPtwoforRMP = 1
 
 Usepresents = 1;
 dt = .01;
@@ -105,18 +105,15 @@ index = 1;
 expected_SHCas = a;
 
 for t = desiredt(1): dt: desiredt(end)  
-    t
-    index
     dW = sqrt(dt)*randn(1,Nsaddles);
-    da = a .* (alpha - a*rho) *dt + ep.*dW %wondering if I forgot tau
-    a = max(min(a + da, 1), .0005)
+    da = a .* (alpha - a*rho) *dt + ep.*dW; %wondering if I forgot tau
+    a = max(min(a + da, 1), .0005);
     
     if t>=desiredt(index)
         index = index+1;
     else
         expected_SHCas(index, :) = a;
     end
-    pause
 end
 
 
@@ -239,10 +236,14 @@ plot(dcomponentsplot(:,3),'r')
 % figure(6)
 % plot(finalds)
 % end
+% figure(7)
+% hold on
+% plot((1:Nt)*dt,ftrace(:,1),'Linewidth',2,'Color','r')
+% plot((1:Nt)*dt,ftrace(:,2),'Linewidth',2,'Color','b')
 
 toc
 
-function [d,dcomponents] = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho, c_or_alpha, alphay, betay,g, desiredtraj, ShowPlot, OneforDMPtwoforRMP)
+function [d,dcomponents,ftrace] = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho, c_or_alpha, alphay, betay,g, desiredtraj, ShowPlot, OneforDMPtwoforRMP)
 % %--------------------
 goaltol = .005;
 %ShowPlot = 1;
@@ -379,11 +380,10 @@ for i = 1:Nt
     end
     trajpointdistancessq = min ((y(1) - desiredtraj(:,1)).^2 + (y(2) - desiredtraj(:,2)).^2, ...
                                 trajpointdistancessq);
-       
     [dsquared, whichtrajpoint] = min( (y(1) - desiredtraj(:,1)).^2 + ...
         (y(2) - desiredtraj(:,2)).^2);
-    distance = distance + ...
-        sqrt( dsquared);
+%     distance = distance + sqrt(dsquared);
+distance = sqrt(dsquared);
     desv = desiredtrajdir(whichtrajpoint, :);
     vnormalerror = (desv(1)*ydot(2) - desv(2)*ydot(1))/sqrt(ydot*ydot');
     
@@ -405,6 +405,7 @@ for i = 1:Nt
         if OneforDMPtwoforRMP == 2
             aall(i,:) = a;
         end
+        fall(i,:) = f;
     end
     sumf = sumf + f;
     ftrace = [ftrace;f];
@@ -448,11 +449,15 @@ if OneforDMPtwoforRMP == 1
         plot((1:Nt)*dt, psiall(:,j)*w(1,j), '-c', 'Color', psicolors(j,:))
         plot((1:Nt)*dt, psiall(:,j)*w(2,j), '-c.', 'Color', psicolors(j,:))
     end
+    plot((1:Nt)*dt, fall(:,1), '-k')
+    plot((1:Nt)*dt, fall(:,2), '-k.')
 else
     for j = 1:size(a,2)
         plot((1:Nt)*dt, aall(:,j)*w(1,j), '-c', 'Color', psicolors(j,:))
         plot((1:Nt)*dt, aall(:,j)*w(2,j), '-c.', 'Color', psicolors(j,:))
     end
+    plot((1:Nt)*dt, fall(:,1), '-k')
+    plot((1:Nt)*dt, fall(:,2), '-k.')
 end
 
 figure(2)
@@ -497,10 +502,5 @@ axis equal
 %     plot((1:Nt)*dt, 1.1+aall(:,j), '-c.', 'Color', saddlecolors(j,:))
 % end
 
-figure(7)
-clf(7)
-figure(7)
-hold on
-plot((1:Nt)*dt,ftrace(:,1),'Linewidth',2,'Color','r')
-plot((1:Nt)*dt,ftrace(:,2),'Linewidth',2,'Color','b')
+end
 end

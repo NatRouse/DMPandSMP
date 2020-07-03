@@ -1,4 +1,4 @@
-function d = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho, c_or_alpha, alphay, betay,g, desiredtraj, ShowPlot, OneforDMPtwoforRMP, w1,w2,Nsaddles)
+function [d,dcomponents,ftrace] = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho, c_or_alpha, alphay, betay,g, desiredtraj, ShowPlot, OneforDMPtwoforRMP)
 % %--------------------
 goaltol = .005;
 %ShowPlot = 1;
@@ -42,7 +42,7 @@ psiall =  nan*ones(Nt,length(sigma));
  
  else
 % %for RMP
-% Nsaddles = 10;
+Nsaddles = 10;
 alpha = 10;
 beta = 1;
 nu = 1.2;
@@ -67,10 +67,11 @@ end
 end
 
 distance = 0;
-
 ydot = y0dot;
 y = y0;
-fnum = 0;
+% fnum = 0;
+sumf = 0;
+ftrace = [];
 
 maxtime = (Nt+1)*dt;
 timetogoal = nan;
@@ -90,6 +91,7 @@ desiredtrajdir = desiredtrajdir ./sqrt(sum(desiredtrajdir.^2,2)); %normalize
 
 trajpointdistancessq = Inf*ones(size(desiredtraj, 1), 1);
 
+xall = [];
 for i = 1:Nt
     % advance diff equation
     %DMP
@@ -110,8 +112,8 @@ for i = 1:Nt
     %RMP
     if OneforDMPtwoforRMP == 2
     dW = sqrt(dt)*randn(1,Nsaddles);
-    da = a .* (alpha - a*rho) *dt + ep.*dW; %%%DID I forget tau??
-    a = max(min(a + da, 1), .0005);
+    da = a .* (alpha - a*rho) *dt + ep.*dW; %tau for scaling?
+    a = max(min(a + da, 1), .0005); %enforcing boundaries on a
     f = a*w'/sum(a);
     end
     ydotdot = (alphay*(betay*(g-y)-ydot)+f)/tau;
@@ -157,13 +159,11 @@ for i = 1:Nt
         psiall(i,:) = psi;
         end
         if OneforDMPtwoforRMP == 2
-            if Nsaddles == 1
-                aall = a;
-            else
-                aall(i,:) = a;
-            end
+            aall(i,:) = a;
         end
     end
+    sumf = sumf + f;
+    ftrace = [ftrace;f];
 end
 
 % %evaluate trajectory
@@ -179,11 +179,10 @@ end
 if isnan(timetogoal) 
     timetogoal = maxtime-dt;
 end
-
 d = 1*distance+...
-    10*timetogoal/Nt+...
+    1e5*timetogoal/Nt+...
     1*sum(sqrt(trajpointdistancessq));
-
+dcomponents = [distance, timetogoal/Nt, sum(sqrt(trajpointdistancessq))];
 
 if ShowPlot
 %grayout colors that aren't used
@@ -194,7 +193,7 @@ colorstouse = setdiff(unique(whichcolor)-1, 0);
 psicolors = ones(1, size(w,2))'*[0.7, 0.7, 0.7];
 psicolors(colorstouse,:) = cool(length(colorstouse));
 
-
+% majorpsi = exp(-1./(2*sum(sigma_or_rho.^2)).*(xall-sum(c_or_alpha)).^2);
 figure(3)
 clf(3)
 figure(3)
@@ -218,7 +217,7 @@ figure(2)
 hold on
 plot(yall(:,1), yall(:,2), 'k-')
 plot(desiredtraj(:,1), desiredtraj(:,2), '-g.');
-plot(w2(1,:), w2(2,:), '-r.')
+% plot(w2(1,:), w2(2,:), '-r.')
 plot(w(1,:), w(2,:), '-ro', 'Color', [.6, .6, .6])
 
 plot(yall(whichcolor==1,1), yall(whichcolor==1,2), 'k.')
@@ -253,5 +252,12 @@ axis equal
 %     plot((1:Nt)*dt, 1.1+aall(:,j), '-c', 'Color', saddlecolors(j,:))
 %     plot((1:Nt)*dt, 1.1+aall(:,j), '-c.', 'Color', saddlecolors(j,:))
 % end
+
+% figure(7)
+% clf(7)
+% figure(7)
+% hold on
+% plot((1:Nt)*dt,ftrace(:,1),'Linewidth',2,'Color','r')
+% plot((1:Nt)*dt,ftrace(:,2),'Linewidth',2,'Color','b')
 end
 
