@@ -214,9 +214,11 @@ function d = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho,...
 
         figure(3)
         clf(3)
-        figure(3)
+        figure(3) %initialize and clear figure 3
         hold on
         title ('Basis functions times weights')
+        xlabel('Time (n_timesteps*dt)');
+        ylabel('Basis function value? weight? idk');
         if OneforDMPtwoforRMP == 1
             for j = 1:size(psi,2)
                 plot((1:Nt)*dt, psiall(:,j)*w(1,j), '-c', 'Color', psicolors(j,:))
@@ -233,17 +235,22 @@ function d = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho,...
         clf(2)
         figure(2)
         hold on
-        plot(yall(:,1), yall(:,2), 'k-')
-        plot(desiredtraj(:,1), desiredtraj(:,2), '-g.');
-        plot(w2(1,:), w2(2,:), '-r.')
-        plot(w(1,:), w(2,:), '-ro', 'Color', [.6, .6, .6])
+        plot(yall(:,1), yall(:,2), 'k-') %black line
+        plot(desiredtraj(:,1), desiredtraj(:,2), '-g.'); %green dotted line
+        plot(w2(1,:), w2(2,:), '-r.') %red line
+        plot(w(1,:), w(2,:), '-ro', 'Color', [.6, .6, .6]) %red circles
 
-        plot(yall(whichcolor==1,1), yall(whichcolor==1,2), 'k.')
+        plot(yall(whichcolor==1,1), yall(whichcolor==1,2), 'k.') %these x values are gonna be either 1 or 0
         for i = 1:size(w, 2)
             plot(yall(whichcolor==(1+i),1), yall(whichcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
             plot(w(1,i), w(2,i), 'k*', 'Color', psicolors(i,:))
         end
         axis equal
+        xlabel('X-axis weights')
+        ylabel('Y-axis weights')
+        title('Basis weights and trajectory (small)')
+        %legend('yall', 'desired trajectory', 'weight w2', 'weight w',...
+            %'yall whichcolor?')
 
         figure(5)
         clf(5)
@@ -252,7 +259,7 @@ function d = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho,...
         for i = 1:size(w, 2)
             plot(yall(whichcolor==(1+i),1), yall(whichcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
         end
-
+        title('Trajectory (color) vs Desired trajectory (black)');
         plot(desiredtraj(:,1), desiredtraj(:,2), '-k.');
         axis equal
 
@@ -270,5 +277,6 @@ function d = Eval(w, Nt, y0dot, y0, x0, alphax, tau, dt, sigma_or_rho,...
         %     plot((1:Nt)*dt, 1.1+aall(:,j), '-c', 'Color', saddlecolors(j,:))
         %     plot((1:Nt)*dt, 1.1+aall(:,j), '-c.', 'Color', saddlecolors(j,:))
         % end
+    end
 end
 

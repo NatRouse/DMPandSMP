@@ -3,9 +3,11 @@ clear all
 clc
 tic
 rng(1)
-
+minSaddles = 5;
+maxSaddles = 10;
 finalds = [];
-for Nsaddles = 5:20
+for Nsaddles = minSaddles:maxSaddles
+%Nsaddles = 5;
     OneforDMPtwoforRMP = 1; 
     
     Usepresents = 1; %for an 'if' statement later
@@ -207,6 +209,8 @@ for Nsaddles = 5:20
     finalds = [finalds,allds(end)]
     figure(6)
     plot(finalds)
+    title('Cost(y) vs number of basis functions(x)');
 end
+    %end statement for the 'for Nsaddles=5:20' loop above
 
 toc
