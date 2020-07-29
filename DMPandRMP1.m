@@ -98,7 +98,6 @@ end
 index = 1;
 expected_SHCas = R.a;
 a = R.a(1,:);
-a*R.rho
 
 for t = desiredt(1): S.dt: desiredt(end)    
     dW = sqrt(S.dt)*randn(1,R.bfs);
@@ -178,7 +177,7 @@ for passes = 1:10
 pause(1)
 chosenew = Inf;
 chosedel = Inf;
-while chosenew+chosedel>=3
+while chosenew+chosedel>=2
     chosenew = 0;
     chosedel = 0;
      for i = 1:size(D.w,1)
@@ -213,7 +212,7 @@ dcost = bestdcost;
 pause(1)
 chosenew = Inf;
 chosedel = Inf;
-while chosenew+chosedel>=3
+while chosenew+chosedel>=2
     chosenew = 0;
     chosedel = 0;
      for i = 1:size(R.w,1)
@@ -512,8 +511,8 @@ legend('DMP','RMP')
 set(gca,'xtick',[])
 
 %Looking for area under curve
-dmparea = trapz(psiall,1)
-rmparea = trapz(aall,1)
+% dmparea = trapz(psiall,1)
+% rmparea = trapz(aall,1)
 
 end
 
