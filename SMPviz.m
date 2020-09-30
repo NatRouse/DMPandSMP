@@ -28,15 +28,15 @@ rng(1) %seeding different random numbers to check validity of cost evaluation
 % g = [0,0];
 
 % %heart shape -----
-% t = linspace(-pi,pi,78);
-% desiredtraj = [16*sin(t).^3; 17 + 13*cos(t)- 5*cos(2*t) - 2*cos(3*t) - cos(4*t)]';
+t = linspace(-pi,pi,78);
+desiredtraj = [16*sin(t).^3; 17 + 13*cos(t)- 5*cos(2*t) - 2*cos(3*t) - cos(4*t)]';
 % desiredtraj = desiredtraj(2-end,:);
-% g = desiredtraj(end,:);
+g = desiredtraj(end,:);
 
 % %ramp up bubble in adjusted ------ 
-desiredtraj = [-1:.05:-.5, fliplr(.5*cos((-pi/2):-.1:-(pi))+1)-1;
-              -1:.05:-.5, fliplr(.5*sin((-pi/2):-.1:-(pi))+0.5)-1]';
-g = [2,0];
+% desiredtraj = [-1:.05:-.5, fliplr(.5*cos((-pi/2):-.1:-(pi))+1)-1;
+%               -1:.05:-.5, fliplr(.5*sin((-pi/2):-.1:-(pi))+0.5)-1]';
+% g = [2,0];
 
 
 %SYSTEM PARAMETER INITIALIZATION
@@ -74,8 +74,8 @@ S = struct('tau',1,'alphay',4,'betay',1,'alpha',10,'beta',1,'nu',1.2,'bfs',sbfs,
 
 %INITIALIZE WEIGHTS
 %Random
-D.w = 5-10*rand(2,D.bfs);
-S.w = 5-10*rand(2,S.bfs);
+% D.w = 5-10*rand(2,D.bfs);
+% S.w = 5-10*rand(2,S.bfs);
 %Zero
 % D.w = zeros(2,D.bfs);
 % S.w = zeros(2,S.bfs);
@@ -84,8 +84,8 @@ wd = P.desiredtraj(round(linspace(1,length(P.desiredtraj),D.bfs)) ,:)'...
     *(D.alphay+D.betay);
 ws = P.desiredtraj(round(linspace(1,length(P.desiredtraj),S.bfs)) ,:)'...
     *(S.alphay+S.betay);
-% D.w = wd;
-% S.w = ws;
+D.w = wd;
+S.w = ws;
 
 
 %BATCH LEARNING
@@ -128,10 +128,10 @@ a = S.a(1,:);
 
 %Run & plot for random weights
 'random weights'
-[dcostrand,rcostrand,D,R] = Eval(D,R,S);
-ShowPlot(D,R,S,wd,ws)
+[dcostrand,scostrand,D,S] = Eval(D,S,P);
+ShowPlot(D,S,P,wd,ws)
 alldcosts = dcostrand;
-allrcosts = rcostrand;
+allscosts = scostrand;
 
 for t = desiredt(1): P.dt: desiredt(end)    
     dW = sqrt(P.dt)*randn(1,S.bfs);
@@ -153,10 +153,10 @@ D.w = betawd';
 
 %Run & plot after batch learning
 'after batch learning'
-[dcost,rcost,D,R] = Eval(D,R,S);
+[dcost,scost,D,S] = Eval(D,S,P);
 alldcosts = [alldcosts dcost];
-allrcosts = [allrcosts rcost];
-ShowPlot(D,R,S,wd,ws)
+allscosts = [allscosts scost];
+ShowPlot(D,S,P,wd,ws)
 pause(5)
 
 %Cost comparison (not necessary)
@@ -164,13 +164,13 @@ figure(8)
 hold on
 title('All Costs')
 plot(alldcosts,'-k','Linewidth',1.5)
-plot(allrcosts,'--k','Linewidth',1.5)
+plot(allscosts,'--k','Linewidth',1.5)
 legend('DMP','RMP')
 xlabel('Iterations')
 ylabel('Cost')
 toc
 %% Evaluate Cost
-function [dcost,rcost,D,R] = Eval(D,S,P,wnew)
+function [dcost,scost,D,S] = Eval(D,S,P,wnew)
 if nargin == 4
     wdmp = wnew;
     wsmp = wnew;
@@ -236,7 +236,7 @@ for i = 1:P.Nt
         (S.y(i+1,2) - P.desiredtraj(:,2)).^2);
     distance = distance + sqrt(dsquared);
 end
-rcost = 100*sum(sqrt((S.y(end,:)-P.g).^2)) ... %final goal error
+scost = 100*sum(sqrt((S.y(end,:)-P.g).^2)) ... %final goal error
     + sum(rssq(S.ydot,1))*P.dt ... %velocity
     + ydotdotsum*P.dt ... %acceleration
     + 1000*sum(sqrt(trajpointdistancessq)); %trajectory error
@@ -302,16 +302,16 @@ xlabel('time (s)','Fontsize',20)
 figure(2) %SPATIAL WEIGHTS
  clf(2)
  figure(2)
-subplot(1,2,1)
-hold on
-title('DMP')
-plot(D.w(1,:),D.w(2,:), '-ro', 'Color', [.6, .6, .6])
-plot(wd(1,:), wd(2,:), '-S.')
-for i = 1:size(D.w, 2)
-    plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
-    plot(D.w(1,i), D.w(2,i), 'k*', 'Color', psicolors(i,:))
-end
-axis equal
+% subplot(1,2,1)
+% hold on
+% title('DMP')
+% plot(D.w(1,:),D.w(2,:), '-ro', 'Color', [.6, .6, .6])
+% plot(wd(1,:), wd(2,:), '-r.')
+% for i = 1:size(D.w, 2)
+%     plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
+%     plot(D.w(1,i), D.w(2,i), 'k*', 'Color', psicolors(i,:))
+% end
+% axis equal
 % axes('Position',[.2 .5 .1 .1])
 % box on
 % for i = 1:size(D.w,2)
@@ -319,11 +319,11 @@ axis equal
 %     plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
 % end
 % set(gca,'YTick',[],'XTick',[])
-subplot(1,2,2)
+% subplot(1,2,2)
 hold on
 title('SMP')
 plot(S.w(1,:),S.w(2,:), '-ro', 'Color', [.6, .6, .6])
-plot(ws(1,:), ws(2,:), '-S.')
+plot(ws(1,:), ws(2,:), '-r.')
 for i = 1:size(S.w, 2)
     plot(yallrmp(smpcolor==(1+i),1), yallrmp(smpcolor==(1+i),2), 'k.', 'Color', acolors(i,:))
     plot(S.w(1,i), S.w(2,i), 'k*', 'Color', acolors(i,:))
@@ -333,15 +333,15 @@ axis equal
 figure(3) %TRAJECTORY
  clf(3)
  figure(3)
-subplot(2,1,1)
-hold on
-title('DMP')
-for i = 1:size(D.w, 2)
-    plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
-end
-plot(P.desiredtraj(:,1),P.desiredtraj(:,2), '-k.');
-axis image
-subplot(2,1,2)
+% subplot(2,1,1)
+% hold on
+% title('DMP')
+% for i = 1:size(D.w, 2)
+%     plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
+% end
+% plot(P.desiredtraj(:,1),P.desiredtraj(:,2), '-k.');
+% axis image
+% subplot(2,1,2)
 hold on
 title('SMP')
 for i = 1:size(S.w, 2)
