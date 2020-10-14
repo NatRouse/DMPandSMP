@@ -1,46 +1,42 @@
-%September 2020
+%October 2020
 %Dynamic movement primitive (DMP) and SHC-based movement primitive (SMP) 
 %structures using simple trajectory following (no point mass).
-%SMPs are based on a series of competitive Lotka-Volterra equations
+%SMPs are based on a series of competitive Lotka-Volterra equations.
+
+%Linked in "Visualization of Stable Heteroclinic Channel-based Movement
+%Primitves". Submitted to ICRA/RA-L on October 15, 2020.
 
 close all
 clear all
 clc
 tic
 
-rng(1) %seeding different random numbers to check validity of cost evaluation
+rng(1)
+%TRAJECTORY CHOICES: Uncomment the relevant trajectory
 
-%TRAJECTORY CHOICES
-
-% %ramp up bubble out -----
+% %Convex Trajectory -----
 % desiredtraj = [0:.05:.5, .5*cos((pi/2):-.1:0)+.5;
 %                0:.05:.5, .5*sin((pi/2):-.1:0)]'; 
 % g = [1,0]; %goal
 
-% %ramp up bubble in ------ 
+% %Concave Trajectory ------ 
 % desiredtraj = [0:.05:.5, fliplr(.5*cos((-pi/2):-.1:-(pi))+1);
 %               0:.05:.5, fliplr(.5*sin((-pi/2):-.1:-(pi))+.5)]';
 % g = [1,0];
 
-% %ramp up wsap around -----
+% %Circular Trajectory -----
 % desiredtraj = [(0:.05:.5)*0, .5*cos(pi/2:.1:pi*2.6);
 %                0:.05:.5, .5*sin(pi/2:.1:pi*2.6)]';
 % g = [0,0];
 
-% %heart shape -----
-t = linspace(-pi,pi,78);
-desiredtraj = [16*sin(t).^3; 17 + 13*cos(t)- 5*cos(2*t) - 2*cos(3*t) - cos(4*t)]';
-% desiredtraj = desiredtraj(2-end,:);
-g = desiredtraj(end,:);
-
-% %ramp up bubble in adjusted ------ 
-% desiredtraj = [-1:.05:-.5, fliplr(.5*cos((-pi/2):-.1:-(pi))+1)-1;
-%               -1:.05:-.5, fliplr(.5*sin((-pi/2):-.1:-(pi))+0.5)-1]';
-% g = [2,0];
-
+% %Heart-Shaped Trajectory -----
+% t = linspace(-pi,pi,78);
+% desiredtraj = [16*sin(t).^3; 17 + 13*cos(t)- 5*cos(2*t) - 2*cos(3*t) - cos(4*t)]';
+% % desiredtraj = desiredtraj(2-end,:);
+% g = desiredtraj(end,:);
 
 %SYSTEM PARAMETER INITIALIZATION
-P = struct('desiredtraj',desiredtraj,'dt',0.001,'Nt',10000,'g',g);
+P = struct('desiredtraj',desiredtraj,'dt',0.01,'Nt',1000,'g',g);
 %trajectory start, velocity at trajectory start, canonical state vector,
 %size of timestep, number of timesteps, goal
 y0 = [];
@@ -51,15 +47,15 @@ x0 = 1;
 bfs = 10;
 sbfs = 10;
 sigma = logspace(log10(.3),log10(.002), bfs); %original
-
+DOF = size(desiredtraj,2);
 
 %DMP INITIALIZATION
 D = struct('tau',1,'alphay',4,'betay',1,'alphax',.5,... %how fast cannonical system decays
     'bfs',bfs,... %number of basis functions (psi activations)
     'c',logspace(log10(1), log10(.01), bfs),... %basis function centers 
     'sigma',sigma,... %basis function widths
-    'w',zeros(2,bfs),...
-    'f',zeros(P.Nt,2),...
+    'w',zeros(DOF,bfs),...
+    'f',zeros(P.Nt,DOF),...
     'psi',nan(P.Nt,bfs),'y',y0,'ydot',y0dot,'x',x0);
 
 %SMP INITIALIZATION
@@ -68,8 +64,8 @@ S = struct('tau',1,'alphay',4,'betay',1,'alpha',10,'beta',1,'nu',1.2,'bfs',sbfs,
     'a0',[1,0.1,10^-9*ones(1,sbfs-2)],...
     'a',[],...'ep',10^-9*ones(1,sbfs),...
     'ep',10^-9*ones(1,sbfs),...
-    'w',zeros(2,bfs),...
-    'f',zeros(P.Nt,2),'y',y0,'ydot',y0dot);
+    'w',zeros(DOF,bfs),...
+    'f',zeros(P.Nt,DOF),'y',y0,'ydot',y0dot);
 
 
 %INITIALIZE WEIGHTS
@@ -95,6 +91,8 @@ desiredydot = [0,0;diff(P.desiredtraj)./(diff(desiredt)*[1,1])]; % desired speed
 desiredydotdot = [0,0;diff(desiredydot)./(diff(desiredt)*[1,1])];
 fdesiredd = D.tau * desiredydotdot - (D.alphay * (D.betay*(P.g-P.desiredtraj) - desiredydot));
 
+
+
 expected_x = x0*exp(-D.alphax/D.tau*desiredt);
 expectedPsi = exp(ones(length(desiredt),1)*(-1./(2*D.sigma.^2)) .*(expected_x - D.c).^2);
 betawd =  (expected_x .* expectedPsi) \ (sum(expectedPsi,2).* fdesiredd);
@@ -113,7 +111,7 @@ for i = 1:S.bfs
         if i==j
             S.rho(i,j) = alpha_rho(i)/beta_rho(i);
         else
-            if 0 == j-1-i % i == mod(j,S.bfs)+1
+            if 0 == j-1-i %i == mod(j,S.bfs)+1
                 S.rho(i,j) = (alpha_rho(i) - alpha_rho(j)/nu_rho(j))./beta_rho(j);
             else
                 S.rho(i,j) = (alpha_rho(i) + alpha_rho(j))/beta_rho(j);
@@ -126,8 +124,8 @@ index = 1;
 expected_SHCas = S.a;
 a = S.a(1,:);
 
-%Run & plot for random weights
-'random weights'
+%Run & plot for coarse approximation
+'Coarse Approximation'
 [dcostrand,scostrand,D,S] = Eval(D,S,P);
 ShowPlot(D,S,P,wd,ws)
 alldcosts = dcostrand;
@@ -151,8 +149,8 @@ meanerror = sum(sum(errors.^2))
 S.w = betaws';
 D.w = betawd';
 
-%Run & plot after batch learning
-'after batch learning'
+%Run & plot after fine approximation
+'Fine Approximation'
 [dcost,scost,D,S] = Eval(D,S,P);
 alldcosts = [alldcosts dcost];
 allscosts = [allscosts scost];
@@ -160,7 +158,7 @@ ShowPlot(D,S,P,wd,ws)
 pause(5)
 
 %Cost comparison (not necessary)
-figure(8)
+figure(20)
 hold on
 title('All Costs')
 plot(alldcosts,'-k','Linewidth',1.5)
@@ -245,17 +243,13 @@ end
 %% Plot
 function ShowPlot(D,S,P,wd,ws)
 
-xall = nan*ones(P.Nt,1);
 psiall =  nan*ones(P.Nt,length(D.sigma));
 aall = nan*ones(P.Nt, S.bfs);
-yall = nan*ones(P.Nt,2);
-ydotall = nan*ones(P.Nt,2);
+yalldmp = nan*ones(P.Nt,2);
+yallsmp = nan*ones(P.Nt,2);
 whichcolor = nan*ones(P.Nt,1);
 smpcolor = whichcolor;
 dmpcolor = whichcolor;
-alldistanceerror = nan*ones(P.Nt,1);
-whichtraj = nan*ones(P.Nt,1);
-allverror = nan*ones(P.Nt,1);
 
 for i = 1:P.Nt
     [~, dmpcolor(i)] = max( [sum( abs(D.alphay*(D.betay*(P.g-D.y(i,:))-D.ydot(i,:))).^2)*.1;
@@ -263,17 +257,20 @@ for i = 1:P.Nt
     [~, smpcolor(i)] = max( [sum( abs(S.alphay*(S.betay*(P.g-S.y(i,:))-S.ydot(i,:))).^2)*.1;
                                sum((abs((S.a(i,:).*S.w) /sum(S.a(i,:)))').^2,2)]);
     yalldmp(i,:) = D.y(i,:);
-    yallrmp(i,:) = S.y(i,:);
+    yallsmp(i,:) = S.y(i,:);
     psiall(i,:) = D.psi(i,:);
     aall(i,:) = S.a(i,:);
 end
-
 dmpcolorstouse = setdiff(unique(dmpcolor)-1, 0);
 smpcolorstouse = setdiff(unique(smpcolor)-1, 0);
 psicolors = ones(1,size(D.w,2))'*[0.7, 0.7, 0.7];
 acolors = ones(1, size(S.w,2))'*[0.7, 0.7, 0.7];
 psicolors(dmpcolorstouse,:) = cool(length(dmpcolorstouse));
 acolors(smpcolorstouse,:) = cool(length(smpcolorstouse));
+% %Choose which kernel to highlight
+% k = 5;
+% psicolors(k,:) = [0 0 0];
+% acolors(k,:) = [0 0 0];
 
 figure(1) %WEIGHTED KERNELS
  clf(1)
@@ -302,50 +299,63 @@ xlabel('time (s)','Fontsize',20)
 figure(2) %SPATIAL WEIGHTS
  clf(2)
  figure(2)
-% subplot(1,2,1)
-% hold on
-% title('DMP')
-% plot(D.w(1,:),D.w(2,:), '-ro', 'Color', [.6, .6, .6])
-% plot(wd(1,:), wd(2,:), '-r.')
-% for i = 1:size(D.w, 2)
-%     plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
-%     plot(D.w(1,i), D.w(2,i), 'k*', 'Color', psicolors(i,:))
-% end
-% axis equal
-% axes('Position',[.2 .5 .1 .1])
-% box on
-% for i = 1:size(D.w,2)
-%     hold on
-%     plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
-% end
-% set(gca,'YTick',[],'XTick',[])
-% subplot(1,2,2)
+subplot(1,2,1)
 hold on
-title('SMP')
+title('DMP','Fontsize',20)
+plot(D.f(:,1),D.f(:,2),'b')
+plot(D.w(1,:),D.w(2,:), '-ro', 'Color', [.6, .6, .6])
+% plot(wd(1,:), wd(2,:), '-r.')
+for i = 1:size(D.w, 2)
+    plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
+    plot(D.w(1,i), D.w(2,i), 'k*', 'Color', psicolors(i,:))
+%     if i == k %kernel highlight
+%         plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:),'Linewidth',5)
+%         plot(D.w(1,k), D.w(2,k), 'k*', 'Color', psicolors(i,:),'Linewidth',5)
+%     end
+end
+axis equal
+axes('Position',[.2 .5 .1 .1])
+box on
+for i = 1:size(D.w,2)
+    hold on
+    plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
+%     if i == k %kernel highlight
+%         plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:),'Linewidth',5)
+%     end
+end
+set(gca,'YTick',[],'XTick',[])
+subplot(1,2,2)
+hold on
+title('SMP','Fontsize',20)
+plot(S.f(:,1),S.f(:,2),'r')
 plot(S.w(1,:),S.w(2,:), '-ro', 'Color', [.6, .6, .6])
-plot(ws(1,:), ws(2,:), '-r.')
+% plot(ws(1,:), ws(2,:), '-r.')
 for i = 1:size(S.w, 2)
-    plot(yallrmp(smpcolor==(1+i),1), yallrmp(smpcolor==(1+i),2), 'k.', 'Color', acolors(i,:))
+    plot(yallsmp(smpcolor==(1+i),1), yallsmp(smpcolor==(1+i),2), 'k.', 'Color', acolors(i,:))
     plot(S.w(1,i), S.w(2,i), 'k*', 'Color', acolors(i,:))
+%     if i == k %kernel highlight
+%         plot(yallsmp(smpcolor==(1+i),1), yallsmp(smpcolor==(1+i),2), 'k.', 'Color', acolors(i,:),'Markersize',10)
+%         plot(S.w(1,k), S.w(2,k), 'k*', 'Color', acolors(i,:),'Linewidth',5)
+%     end
 end
 axis equal
 
 figure(3) %TRAJECTORY
  clf(3)
  figure(3)
-% subplot(2,1,1)
-% hold on
-% title('DMP')
-% for i = 1:size(D.w, 2)
-%     plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
-% end
-% plot(P.desiredtraj(:,1),P.desiredtraj(:,2), '-k.');
-% axis image
-% subplot(2,1,2)
+subplot(2,1,1)
 hold on
-title('SMP')
+title('DMP','Fontsize',20)
+for i = 1:size(D.w, 2)
+    plot(yalldmp(dmpcolor==(1+i),1), yalldmp(dmpcolor==(1+i),2), 'k.', 'Color', psicolors(i,:))
+end
+plot(P.desiredtraj(:,1),P.desiredtraj(:,2), '-k.');
+axis image
+subplot(2,1,2)
+hold on
+title('SMP','Fontsize',20)
 for i = 1:size(S.w, 2)
-    plot(yallrmp(smpcolor==(1+i),1), yallrmp(smpcolor==(1+i),2), 'k.', 'Color', acolors(i,:))
+    plot(yallsmp(smpcolor==(1+i),1), yallsmp(smpcolor==(1+i),2), 'k.', 'Color', acolors(i,:))
 end
 plot(P.desiredtraj(:,1),P.desiredtraj(:,2), '-k.');
 axis image
