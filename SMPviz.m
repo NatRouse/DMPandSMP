@@ -1,10 +1,11 @@
-%October 2020
+%February 2021
 %Dynamic movement primitive (DMP) and SHC-based movement primitive (SMP) 
 %structures using simple trajectory following (no point mass).
 %SMPs are based on a series of competitive Lotka-Volterra equations.
 
 %Linked in "Visualization of Stable Heteroclinic Channel-based Movement
-%Primitves". Submitted to ICRA/RA-L on October 15, 2020.
+%Primitves". Submitted to ICRA/RA-L on October 15, 2020; revised on January 12, 2021;
+%accepted on February 3, 2021.
 
 close all
 clear all
@@ -44,41 +45,41 @@ y0(1,:) = desiredtraj(1,:) + 0.001;
 y0dot = [];
 y0dot(1,:) = zeros(1,2);
 x0 = 1;
-bfs = 10;
-sbfs = 10;
-sigma = logspace(log10(.3),log10(.002), bfs); %original
+K = 10;
+sK = 10;
+sigma = logspace(log10(.3),log10(.002), K); %original
 DOF = size(desiredtraj,2);
 
 %DMP INITIALIZATION
 D = struct('tau',1,'alphay',4,'betay',1,'alphax',.5,... %how fast cannonical system decays
-    'bfs',bfs,... %number of basis functions (psi activations)
-    'c',logspace(log10(1), log10(.01), bfs),... %basis function centers 
+    'K',K,... %number of basis functions (psi activations)
+    'c',logspace(log10(1), log10(.01), K),... %basis function centers 
     'sigma',sigma,... %basis function widths
-    'w',zeros(DOF,bfs),...
+    'w',zeros(DOF,K),...
     'f',zeros(P.Nt,DOF),...
-    'psi',nan(P.Nt,bfs),'y',y0,'ydot',y0dot,'x',x0);
+    'psi',nan(P.Nt,K),'y',y0,'ydot',y0dot,'x',x0);
 
 %SMP INITIALIZATION
-S = struct('tau',1,'alphay',4,'betay',1,'alpha',10,'beta',1,'nu',1.2,'bfs',sbfs,...
-    'rho',zeros(sbfs),...
-    'a0',[1,0.1,10^-9*ones(1,sbfs-2)],...
-    'a',[],...'ep',10^-9*ones(1,sbfs),...
-    'ep',10^-9*ones(1,sbfs),...
-    'w',zeros(DOF,bfs),...
+S = struct('tau',1,'alphay',4,'betay',1,'alpha',10,'beta',1,'nu',1.2,'K',sK,...
+    'rho',zeros(sK),...
+    'a0',[1,0.1,10^-9*ones(1,sK-2)],...
+    'a',[],...'ep',10^-9*ones(1,sK),...
+    'ep',10^-9*ones(1,sK),...
+    'w',zeros(DOF,sK),...
     'f',zeros(P.Nt,DOF),'y',y0,'ydot',y0dot);
 
 
 %INITIALIZE WEIGHTS
 %Random
-% D.w = 5-10*rand(2,D.bfs);
-% S.w = 5-10*rand(2,S.bfs);
+% D.w = 5-10*rand(2,D.K);
+% S.w = 5-10*rand(2,S.K);
 %Zero
-% D.w = zeros(2,D.bfs);
-% S.w = zeros(2,S.bfs);
+% D.w = zeros(2,D.K);
+% S.w = zeros(2,S.K);
 %Scaled from trajectory
-wd = P.desiredtraj(round(linspace(1,length(P.desiredtraj),D.bfs)) ,:)'...
+wd = P.desiredtraj(round(linspace(1,length(P.desiredtraj),D.K)) ,:)'...
     *(D.alphay+D.betay);
-ws = P.desiredtraj(round(linspace(1,length(P.desiredtraj),S.bfs)) ,:)'...
+ws = P.desiredtraj(round(linspace(1,length(P.desiredtraj),S.K)) ,:)'...
     *(S.alphay+S.betay);
 D.w = wd;
 S.w = ws;
@@ -101,17 +102,17 @@ errors = (expected_x .* expectedPsi)*betawd - (sum(expectedPsi,2).* fdesiredd);
 S.a(1,:) = S.a0;
 
 %Parameters for rho matrix
-alpha_rho = S.alpha*ones(S.bfs,1);
-beta_rho = S.beta*ones(S.bfs,1);
-nu_rho = S.nu*ones(S.bfs,1);
-S.rho = zeros(S.bfs);
+alpha_rho = S.alpha*ones(S.K,1);
+beta_rho = S.beta*ones(S.K,1);
+nu_rho = S.nu*ones(S.K,1);
+S.rho = zeros(S.K);
 
-for i = 1:S.bfs
-    for j = 1:S.bfs
+for i = 1:S.K
+    for j = 1:S.K
         if i==j
             S.rho(i,j) = alpha_rho(i)/beta_rho(i);
         else
-            if 0 == j-1-i %i == mod(j,S.bfs)+1
+            if 0 == j-1-i %i == mod(j,S.K)+1
                 S.rho(i,j) = (alpha_rho(i) - alpha_rho(j)/nu_rho(j))./beta_rho(j);
             else
                 S.rho(i,j) = (alpha_rho(i) + alpha_rho(j))/beta_rho(j);
@@ -132,7 +133,7 @@ alldcosts = dcostrand;
 allscosts = scostrand;
 
 for t = desiredt(1): P.dt: desiredt(end)    
-    dW = sqrt(P.dt)*randn(1,S.bfs);
+    dW = sqrt(P.dt)*randn(1,S.K);
     da = a .* (S.alpha - a*S.rho) *P.dt + S.ep.*dW; %tau for scaling?
     a = max(min(a + da, 1), .0005); %enforcing boundaries on 'a'
     if t>=desiredt(index)
@@ -211,7 +212,7 @@ distance = 0;
 trajpointdistancessq = Inf*ones(size(P.desiredtraj, 1), 1);
 ydotdotsum = 0;
 for i = 1:P.Nt
-    dW = sqrt(P.dt)*randn(1,S.bfs);
+    dW = sqrt(P.dt)*randn(1,S.K);
     if i == 1
         da = S.a0 .* (S.alpha - S.a0*S.rho) *P.dt + S.ep.*dW;
         S.a(i,:) = max(min(S.a0 + da, 1), 0.0005);
@@ -244,7 +245,7 @@ end
 function ShowPlot(D,S,P,wd,ws)
 
 psiall =  nan*ones(P.Nt,length(D.sigma));
-aall = nan*ones(P.Nt, S.bfs);
+aall = nan*ones(P.Nt, S.K);
 yalldmp = nan*ones(P.Nt,2);
 yallsmp = nan*ones(P.Nt,2);
 whichcolor = nan*ones(P.Nt,1);
